@@ -1,0 +1,56 @@
+name: Make PDFs
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    container: dalibo/pandocker:latest
+    outputs:
+      files: ${{ steps.changes.outputs.files }}
+    steps:
+      - name: Install latest git
+        run: |
+          echo  "deb http://deb.debian.org/debian stretch-backports main" \
+            >> /etc/apt/sources.list
+          apt-get update
+          apt-get -y -t stretch-backports install git
+
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Find changed markdown files
+        id: changes
+        shell: bash
+        run: |
+          git fetch --depth=1 origin +${{github.base_ref}}
+          echo "::set-output name=files::$(git diff-tree --no-commit-id --name-only -r ${{ github.base_ref }}..${{ github.event.pull_request.head.sha }} | grep "src/.*\.md$" | xargs)"
+
+      - name: Generate PDFs for changed files
+        if: steps.changes.outputs.files
+        shell: bash
+        run: |
+          for src in ${{ steps.changes.outputs.files }};
+          do
+            filename="${src##*/}"
+            filename_no_suffix="${filename%.*}"
+            echo "Working on ${filename}"
+            pandoc "${src}" \
+              -V geometry:a4paper \
+              -V geometry:margin=2cm \
+              -V mainfont="DejaVuSerif" \
+              --pdf-engine=xelatex \
+              -o "pdf/${filename_no_suffix}.pdf"
+          done
+
+      - name: Save Changes
+        uses: EndBug/add-and-commit@v5.1.0
+        with:
+          add: 'pdf'
+          message: 'Adding generated PDFs.'
+        if: steps.changes.outputs.files
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
