@@ -26,8 +26,8 @@ jobs:
         id: changes
         shell: bash
         run: |
-          git show ${{ github.base_ref }}
           git show ${{ github.event.pull_request.head.sha }}
+          git show ${{ github.base_ref }}
           echo "::set-output name=files::$(git diff-tree --no-commit-id --name-only -r ${{ github.base_ref }}..${{ github.event.pull_request.head.sha }} | grep "src/.*\.md$" | xargs)"
 
       - name: Generate PDFs for changed files
