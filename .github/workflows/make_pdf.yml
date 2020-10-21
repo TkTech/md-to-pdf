@@ -22,12 +22,14 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Fetching base of PR for comparing.
+        run: |
+          git fetch --depth=1 origin +refs/heads/${{github.base_ref}}:refs/remotes/origin/${{github.base_ref}}
+
       - name: Find changed markdown files
         id: changes
         shell: bash
         run: |
-          git show ${{ github.event.pull_request.head.sha }}
-          git show ${{ github.base_ref }}
           echo "::set-output name=files::$(git diff-tree --no-commit-id --name-only -r ${{ github.base_ref }}..${{ github.event.pull_request.head.sha }} | grep "src/.*\.md$" | xargs)"
 
       - name: Generate PDFs for changed files
